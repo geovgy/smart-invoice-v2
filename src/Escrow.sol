@@ -23,7 +23,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     }
 
     uint256 internal _counter;
-    mapping(uint256 tokenId => EscrowInfo escrow) public escrows;
+    mapping(uint256 tokenId => EscrowInfo escrow) internal _escrows;
 
 
     constructor(
@@ -46,20 +46,20 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         }
 
         uint256 tokenId = _counter;
-        escrows[tokenId] = escrow;
+        _escrows[tokenId] = escrow;
 
         _increment();
-        _safeMint(msg.sender, tokenId);
+        _safeMint(escrow.payee, tokenId);
     }
 
     function depositPayment(uint256 tokenId, uint256 index) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(index < escrows[tokenId].payments.length, "Escrow: index out of bounds");
-        require(!escrows[tokenId].payments[index].unlocked, "Escrow: payment already unlocked");
-        require(!escrows[tokenId].payments[index].funded, "Escrow: payment already funded");
+        require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+        require(!_escrows[tokenId].payments[index].unlocked, "Escrow: payment already unlocked");
+        require(!_escrows[tokenId].payments[index].funded, "Escrow: payment already funded");
 
-        IERC20(escrows[tokenId].token).transferFrom(msg.sender, address(this), escrows[tokenId].payments[index].amount);
-        escrows[tokenId].payments[index].funded = true;
+        IERC20(_escrows[tokenId].token).transferFrom(msg.sender, address(this), _escrows[tokenId].payments[index].amount);
+        _escrows[tokenId].payments[index].funded = true;
     }
 
     function depositPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
@@ -68,88 +68,101 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
         uint256 amount;
         for (uint256 i = 0; i < indices.length; i++) {
-            require(indices[i] < escrows[tokenId].payments.length, "Escrow: index out of bounds");
-            require(!escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment already unlocked");
-            require(!escrows[tokenId].payments[indices[i]].funded, "Escrow: payment already funded");
-            amount += escrows[tokenId].payments[indices[i]].amount;
+            require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+            require(!_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment already unlocked");
+            require(!_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment already funded");
+            amount += _escrows[tokenId].payments[indices[i]].amount;
         }
         
-        IERC20(escrows[tokenId].token).transferFrom(msg.sender, address(this), amount);
+        IERC20(_escrows[tokenId].token).transferFrom(msg.sender, address(this), amount);
 
         for (uint256 i = 0; i < indices.length; i++) {
-            escrows[tokenId].payments[indices[i]].funded = true;
+            _escrows[tokenId].payments[indices[i]].funded = true;
         }
     }
 
     function unlockPayment(uint256 tokenId, uint256 index) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(index < escrows[tokenId].payments.length, "Escrow: index out of bounds");
-        require(escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
-        require(escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
-        require(!escrows[tokenId].payments[index].unlocked, "Escrow: payment already unlocked");
+        require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+        require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
+        require(_escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
+        require(!_escrows[tokenId].payments[index].unlocked, "Escrow: payment already unlocked");
 
-        escrows[tokenId].payments[index].unlocked = true;
+        _escrows[tokenId].payments[index].unlocked = true;
+    }
+
+    function unlockPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
+        require(_exists(tokenId), "Escrow: tokenId does not exist");
+        require(indices.length > 0, "Escrow: indices is empty");
+        require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
+
+        for (uint256 i = 0; i < indices.length; i++) {
+            require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+            require(_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment not funded");
+            require(!_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment already unlocked");
+        }
+
+        for (uint256 i = 0; i < indices.length; i++) {
+            _escrows[tokenId].payments[indices[i]].unlocked = true;
+        }
     }
 
     function withdrawPayment(uint256 tokenId, uint256 index) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(index < escrows[tokenId].payments.length, "Escrow: index out of bounds");
-        require(escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
-        require(escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
-        require(escrows[tokenId].payments[index].unlocked, "Escrow: payment not unlocked");
-        require(!escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
+        require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
+        require(_escrows[tokenId].payments[index].unlocked, "Escrow: payment not unlocked");
+        require(!_escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
 
-        escrows[tokenId].payments[index].paid = true;
-        IERC20(escrows[tokenId].token).transfer(escrows[tokenId].payee, escrows[tokenId].payments[index].amount);
+        _escrows[tokenId].payments[index].paid = true;
+        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, _escrows[tokenId].payments[index].amount);
     }
 
     function withdrawPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         require(indices.length > 0, "Escrow: indices is empty");
-        require(escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
 
         uint256 amount;
         for (uint256 i = 0; i < indices.length; i++) {
-            require(indices[i] < escrows[tokenId].payments.length, "Escrow: index out of bounds");
-            require(escrows[tokenId].payments[indices[i]].funded, "Escrow: payment not funded");
-            require(escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment not unlocked");
-            require(!escrows[tokenId].payments[indices[i]].paid, "Escrow: payment already paid");
-            amount += escrows[tokenId].payments[indices[i]].amount;
+            require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
+            require(_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment not funded");
+            require(_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment not unlocked");
+            require(!_escrows[tokenId].payments[indices[i]].paid, "Escrow: payment already paid");
+            amount += _escrows[tokenId].payments[indices[i]].amount;
         }
 
         for (uint256 i = 0; i < indices.length; i++) {
-            escrows[tokenId].payments[indices[i]].paid = true;
+            _escrows[tokenId].payments[indices[i]].paid = true;
         }
 
-        IERC20(escrows[tokenId].token).transfer(escrows[tokenId].payee, amount);
+        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
     }
 
     function withdrawAll(uint256 tokenId) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
 
         uint256 amount;
-        uint256[] memory indices;
-        for (uint256 i = 0; i < escrows[tokenId].payments.length; i++) {
-            bool funded = escrows[tokenId].payments[i].funded;
-            bool unlocked = escrows[tokenId].payments[i].unlocked;
-            bool paid = escrows[tokenId].payments[i].paid;
+        Payment[] storage payments = _escrows[tokenId].payments;
+        for (uint256 i = 0; i < _escrows[tokenId].payments.length; i++) {
+            bool funded = payments[i].funded;
+            bool unlocked = payments[i].unlocked;
+            bool paid = payments[i].paid;
             if (funded && unlocked && !paid) {
-                amount += escrows[tokenId].payments[i].amount;
-                indices[indices.length] = i;
-            }
-        }
-        
-        for (uint256 i = 0; i < indices.length; i++) {
-            bool funded = escrows[tokenId].payments[indices[i]].funded;
-            bool unlocked = escrows[tokenId].payments[indices[i]].unlocked;
-            bool paid = escrows[tokenId].payments[indices[i]].paid;
-            if (funded && unlocked && !paid) {
-                escrows[tokenId].payments[indices[i]].paid = true;
+                amount += payments[i].amount;
+                payments[i].paid = true;
             }
         }
 
-        IERC20(escrows[tokenId].token).transfer(escrows[tokenId].payee, amount);
+        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
+        _escrows[tokenId].payments = payments;
+    }
+
+    function getEscrow(uint256 tokenId) external view returns (EscrowInfo memory) {
+        require(_exists(tokenId), "Escrow: tokenId does not exist");
+        return _escrows[tokenId];
     }
 
     function _increment() internal {
