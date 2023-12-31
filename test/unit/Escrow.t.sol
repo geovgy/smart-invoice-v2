@@ -20,11 +20,81 @@ contract EscrowTest is Test {
         escrow.setArbitrator(arbitrator, 0);
     }
 
-    //
-    // TO DO:
-    // - test dispute
-    // - test resolve
-    //
+    function test_dispute() public {
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: 1,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(1),
+            token: address(token),
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
+        });
+        escrow.createEscrow(escrowInfo1);
+
+        vm.startPrank(vm.addr(uint256(keccak256("random"))));
+        vm.expectRevert();
+        escrow.dispute(0, bytes32(0));
+        vm.stopPrank();
+
+        vm.prank(msg.sender);
+        escrow.dispute(0, bytes32(0));
+
+        Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
+        assertEq(escrowInfo3.locked, true);
+    }
+
+    function test_resolve() public {
+        escrow.setArbitrator(arbitrator, 600);
+        escrow.setFee(400);
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: 10000,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(1),
+            token: address(token),
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
+        });
+        escrow.createEscrow(escrowInfo1);
+        
+        token.mint(msg.sender, 10000);
+        vm.startPrank(msg.sender);
+        token.approve(address(escrow), 10000);
+        escrow.depositPayment(0, 0);
+        escrow.dispute(0, bytes32(0));
+
+        uint256 payerAmount = (10000 - 600 - 400) / 3;
+        uint256 payeeAmount = payerAmount * 2;
+        
+        vm.startPrank(vm.addr(uint256(keccak256("random"))));
+        vm.expectRevert();
+        escrow.resolve(0, payerAmount, payeeAmount, bytes32(0));
+        vm.stopPrank();
+
+        vm.prank(arbitrator);
+        escrow.resolve(0, payerAmount, payeeAmount, bytes32(0));
+
+        Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
+        assertEq(escrowInfo3.locked, false);
+        assertEq(escrowInfo3.payments[0].paid, true);
+        assertEq(token.balanceOf(address(vm.addr(1))), payeeAmount);
+        assertEq(token.balanceOf(address(msg.sender)), payerAmount);
+        assertEq(token.balanceOf(address(arbitrator)), 600);
+        assertEq(token.balanceOf(address(escrow)), 400);
+    }
 
     function test_getArbitrator() public {
         (bool valid, uint256 fee) = escrow.getArbitrator(arbitrator);
