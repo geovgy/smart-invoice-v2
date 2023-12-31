@@ -14,9 +14,13 @@ contract InvariantEscrowTest is Test {
     Escrow public escrow;
     TestERC20 public token;
 
+    address public arbitrator;
+
     function setUp() public {
         escrow = new Escrow(address(this), "Escrow", "ESCROW");
         token =  new TestERC20("TestERC20", "TEST", 0);
+        arbitrator = vm.addr(uint256(keccak256("arbitrator")));
+        escrow.setArbitrator(arbitrator, 0);
     }
 
     function invariant_balances() public {
@@ -25,6 +29,7 @@ contract InvariantEscrowTest is Test {
         uint256 totalDeposits;
         uint256 totalPayeeBalance;
         uint256 totalFeeBalance;
+        uint256 totalArbitratorBalance;
 
         Escrow.EscrowInfo memory escrowInfo;
         for(uint256 i; i < escrow.totalSupply(); i++) {
@@ -36,11 +41,12 @@ contract InvariantEscrowTest is Test {
                 if(escrowInfo.payments[j].paid) {
                     totalFeeBalance += escrow.getFee(escrowInfo.payments[j].amount);
                     totalPayeeBalance += token.balanceOf(escrowInfo.payee);
+                    totalArbitratorBalance += token.balanceOf(escrowInfo.arbitrator);
                 }
             }
         }
         
         assertEq(totalFeeBalance, ownerBalance);
-        assertEq(totalDeposits, escrowBalance + totalPayeeBalance + totalFeeBalance);
+        assertEq(totalDeposits, escrowBalance + totalPayeeBalance + totalFeeBalance + totalArbitratorBalance);
     }
 }

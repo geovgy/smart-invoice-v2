@@ -14,9 +14,13 @@ contract FuzzEscrowTest is Test {
     Escrow public escrow;
     TestERC20 public token;
 
+    address public arbitrator;
+
     function setUp() public {
         escrow = new Escrow(address(this), "Escrow", "ESCROW");
         token =  new TestERC20("TestERC20", "TEST", 0);
+        arbitrator = vm.addr(uint256(keccak256("arbitrator")));
+        escrow.setArbitrator(arbitrator, 0);
     }
 
     function testFuzz_depositPayment(uint256 amount) public {
@@ -32,7 +36,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, amount);
         vm.startPrank(msg.sender);
@@ -69,7 +75,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
@@ -110,7 +118,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
@@ -153,7 +163,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
@@ -194,7 +206,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, amount);
         
@@ -231,7 +245,9 @@ contract FuzzEscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, amount);
         

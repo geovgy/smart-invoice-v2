@@ -11,9 +11,56 @@ contract EscrowTest is Test {
     Escrow public escrow;
     TestERC20 public token;
 
+    address public arbitrator;
+
     function setUp() public {
         escrow = new Escrow(address(this), "Escrow", "ESCROW");
         token =  new TestERC20("TestERC20", "TEST", 0);
+        arbitrator = vm.addr(uint256(keccak256("arbitrator")));
+        escrow.setArbitrator(arbitrator, 0);
+    }
+
+    //
+    // TO DO:
+    // - test dispute
+    // - test resolve
+    //
+
+    function test_getArbitrator() public {
+        (bool valid, uint256 fee) = escrow.getArbitrator(arbitrator);
+        assertTrue(valid);
+        assertEq(fee, 0);
+
+        (bool valid2, uint256 fee2) = escrow.getArbitrator(vm.addr(1));
+        assertFalse(valid2);
+        assertEq(fee2, 0);
+    }
+
+    function test_setArbitrator() public {
+        escrow.setArbitrator(vm.addr(3), 100);
+        (bool valid, uint256 fee) = escrow.getArbitrator(vm.addr(3));
+        assertTrue(valid);
+        assertEq(fee, 100);
+
+        vm.startPrank(vm.addr(4));
+        vm.expectRevert();
+        escrow.setArbitrator(vm.addr(4), 200);
+        vm.stopPrank();
+        (bool valid2, uint256 fee2) = escrow.getArbitrator(vm.addr(4));
+        assertFalse(valid2);
+        assertEq(fee2, 0);
+    }
+
+    function test_removeArbitrator() public {
+        escrow.setArbitrator(vm.addr(3), 100);
+        (bool valid, uint256 fee) = escrow.getArbitrator(vm.addr(3));
+        assertTrue(valid);
+        assertEq(fee, 100);
+
+        escrow.removeArbitrator(vm.addr(3));
+        (bool valid2, uint256 fee2) = escrow.getArbitrator(vm.addr(3));
+        assertFalse(valid2);
+        assertEq(fee2, 0);
     }
 
     function test_createEscrow() public {
@@ -28,7 +75,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         escrow.createEscrow(escrowInfo);
         assertEq(escrow.balanceOf(vm.addr(1)), 1);
@@ -46,7 +95,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         escrow.createEscrow(escrowInfo);
         Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
@@ -71,14 +122,18 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
 
         Escrow.EscrowInfo memory escrowInfo2 = Escrow.EscrowInfo({
             payer: msg.sender,
             payee: vm.addr(2),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
 
         escrow.createEscrow(escrowInfo1);
@@ -98,7 +153,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
@@ -123,7 +180,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
@@ -152,7 +211,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
@@ -192,7 +253,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
@@ -227,7 +290,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
@@ -267,7 +332,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
@@ -313,7 +380,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
@@ -364,7 +433,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 10);
         vm.startPrank(msg.sender);
@@ -406,7 +477,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 30);
         vm.startPrank(msg.sender);
@@ -454,7 +527,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 30);
         vm.startPrank(msg.sender);
@@ -502,7 +577,9 @@ contract EscrowTest is Test {
             payer: msg.sender,
             payee: vm.addr(1),
             token: address(token),
-            payments: payments
+            payments: payments,
+            arbitrator: arbitrator,
+            locked: false
         });
         token.mint(msg.sender, 30);
         
