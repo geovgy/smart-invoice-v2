@@ -23,6 +23,8 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     }
 
     uint256 internal _counter;
+    uint256 internal _basisPoints;
+    uint256 internal _revenue;
     mapping(uint256 tokenId => EscrowInfo escrow) internal _escrows;
 
 
@@ -116,7 +118,9 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(!_escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
 
         _escrows[tokenId].payments[index].paid = true;
-        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, _escrows[tokenId].payments[index].amount);
+        uint256 fee = getFee(_escrows[tokenId].payments[index].amount);
+        uint256 amount = _escrows[tokenId].payments[index].amount - fee;
+        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
     }
 
     function withdrawPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
@@ -132,6 +136,9 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
             require(!_escrows[tokenId].payments[indices[i]].paid, "Escrow: payment already paid");
             amount += _escrows[tokenId].payments[indices[i]].amount;
         }
+
+        uint256 fee = getFee(amount);
+        amount -= fee;
 
         for (uint256 i = 0; i < indices.length; i++) {
             _escrows[tokenId].payments[indices[i]].paid = true;
@@ -156,13 +163,25 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
             }
         }
 
+        uint256 fee = getFee(amount);
+        amount -= fee;
+
         IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
         _escrows[tokenId].payments = payments;
+    }
+
+    function setFee(uint256 basisPoints) external onlyOwner {
+        require(basisPoints <= 10000, "Escrow: basisPoints exceeds 10000");
+        _basisPoints = basisPoints;
     }
 
     function getEscrow(uint256 tokenId) external view returns (EscrowInfo memory) {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         return _escrows[tokenId];
+    }
+
+    function getFee(uint256 amount) public view returns (uint256) {
+        return amount * _basisPoints / 10000;
     }
 
     function _increment() internal {
