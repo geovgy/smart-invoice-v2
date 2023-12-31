@@ -59,6 +59,33 @@ contract EscrowTest is Test {
         assertEq(escrowInfo2.payments[0].paid, false);
     }
 
+    function test_totalSupply() public {
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: 1,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(1),
+            token: address(token),
+            payments: payments
+        });
+
+        Escrow.EscrowInfo memory escrowInfo2 = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(2),
+            token: address(token),
+            payments: payments
+        });
+
+        escrow.createEscrow(escrowInfo1);
+        escrow.createEscrow(escrowInfo2);
+        assertEq(escrow.totalSupply(), 2);
+    }
+
     function test_depositPayment() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
