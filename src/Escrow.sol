@@ -203,6 +203,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         return amount * _basisPoints / 10000;
     }
 
+    function totalSupply() external view returns (uint256) {
+        return _counter;
+    }
+
     function _increment() internal {
         unchecked {
             _counter++;
