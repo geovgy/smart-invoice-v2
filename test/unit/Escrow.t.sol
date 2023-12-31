@@ -2,8 +2,8 @@
 pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {Escrow} from "../src/Escrow.sol";
-import {TestERC20} from "./utils/TestERC20.sol";
+import {Escrow} from "../../src/Escrow.sol";
+import {TestERC20} from "../utils/TestERC20.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 
@@ -317,6 +317,11 @@ contract EscrowTest is Test {
     function test_setFee() public {
         escrow.setFee(1000);
         assertEq(escrow.getFee(2 * 10), 2);
+
+        vm.startPrank(vm.addr(3));
+        vm.expectRevert();
+        escrow.setFee(10001);
+        vm.stopPrank();
     }
 
     function test_withdrawPayment_withFee() public {

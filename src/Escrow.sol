@@ -8,6 +8,9 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 
 
 contract Escrow is ERC721, Ownable, ReentrancyGuard {
+    uint256 private constant _MAX_BASIS_POINTS = 10000;
+    uint256 private constant _MAX_AMOUNT = (2**256 - 1) / _MAX_BASIS_POINTS;
+
     struct Payment {
         uint256 amount;
         bool funded;
@@ -41,7 +44,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(escrow.payee != address(0), "Escrow: payee is the zero address");
         require(escrow.token != address(0), "Escrow: token is the zero address");
         for (uint256 i = 0; i < escrow.payments.length; i++) {
-            require(escrow.payments[i].amount > 0, "Escrow: amount is zero");
+            require(
+                escrow.payments[i].amount > 0 && escrow.payments[i].amount <= _MAX_AMOUNT, 
+                "Escrow: amount is zero or exceeds maximum limit"
+            );
             require(!escrow.payments[i].funded, "Escrow: payment already funded");
             require(!escrow.payments[i].unlocked, "Escrow: payment already unlocked");
             require(!escrow.payments[i].paid, "Escrow: payment already paid");
@@ -171,7 +177,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     }
 
     function setFee(uint256 basisPoints) external onlyOwner {
-        require(basisPoints <= 10000, "Escrow: basisPoints exceeds 10000");
+        require(basisPoints <= _MAX_BASIS_POINTS, "Escrow: basisPoints exceeds maximum limit");
         _basisPoints = basisPoints;
     }
 
