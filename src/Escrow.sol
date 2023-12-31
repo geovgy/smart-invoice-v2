@@ -27,7 +27,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
     uint256 internal _counter;
     uint256 internal _basisPoints;
-    uint256 internal _revenue;
+    mapping(address token => uint256 amount) internal _feeBalances;
     mapping(uint256 tokenId => EscrowInfo escrow) internal _escrows;
 
 
@@ -123,9 +123,12 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(_escrows[tokenId].payments[index].unlocked, "Escrow: payment not unlocked");
         require(!_escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
 
-        _escrows[tokenId].payments[index].paid = true;
         uint256 fee = getFee(_escrows[tokenId].payments[index].amount);
         uint256 amount = _escrows[tokenId].payments[index].amount - fee;
+
+        _escrows[tokenId].payments[index].paid = true;
+        _feeBalances[_escrows[tokenId].token] += fee;
+
         IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
     }
 
@@ -149,6 +152,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < indices.length; i++) {
             _escrows[tokenId].payments[indices[i]].paid = true;
         }
+        _feeBalances[_escrows[tokenId].token] += fee;
 
         IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
     }
@@ -172,13 +176,22 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         uint256 fee = getFee(amount);
         amount -= fee;
 
-        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
         _escrows[tokenId].payments = payments;
+        _feeBalances[_escrows[tokenId].token] += fee;
+
+        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
     }
 
     function setFee(uint256 basisPoints) external onlyOwner {
         require(basisPoints <= _MAX_BASIS_POINTS, "Escrow: basisPoints exceeds maximum limit");
         _basisPoints = basisPoints;
+    }
+
+    function collectFee(address token) external onlyOwner nonReentrant {
+        require(_feeBalances[token] > 0, "Escrow: fee balance is zero");
+        uint256 rev = _feeBalances[token];
+        _feeBalances[token] = 0;
+        IERC20(_escrows[0].token).transfer(owner(), rev);
     }
 
     function getEscrow(uint256 tokenId) external view returns (EscrowInfo memory) {

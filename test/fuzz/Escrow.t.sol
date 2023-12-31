@@ -214,4 +214,45 @@ contract FuzzEscrowTest is Test {
         assertEq(token.balanceOf(address(vm.addr(1))), amount - feeAmount);
         assertEq(token.balanceOf(address(escrow)), feeAmount);
     }
+
+    function testFuzz_collectFee(uint256 amount, uint8 feeBasisPts) public {
+        vm.assume(amount > 10000 && amount < _MAX_AMOUNT);
+        vm.assume(feeBasisPts > 0 && feeBasisPts < _MAX_BASIS_POINTS);
+
+        escrow.setFee(feeBasisPts);
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: amount,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(1),
+            token: address(token),
+            payments: payments
+        });
+        token.mint(msg.sender, amount);
+        
+        vm.startPrank(msg.sender);
+        token.approve(address(escrow), amount);
+        escrow.createEscrow(escrowInfo);
+        escrow.depositPayment(0, 0);
+        escrow.unlockPayment(0, 0);
+        vm.stopPrank();
+
+        vm.prank(vm.addr(1));
+        escrow.withdrawPayment(0, 0);
+        
+        uint256 feeAmount = escrow.getFee(amount);
+        Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
+        assertEq(escrowInfo4.payments[0].paid, true);
+        assertEq(token.balanceOf(address(vm.addr(1))), amount - feeAmount);
+        assertEq(token.balanceOf(address(escrow)), feeAmount);
+
+        escrow.collectFee(address(token));
+        assertEq(token.balanceOf(address(escrow)), 0);
+        assertEq(token.balanceOf(address(this)), feeAmount);
+    }
 }

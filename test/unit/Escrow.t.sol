@@ -456,6 +456,58 @@ contract EscrowTest is Test {
         assertEq(token.balanceOf(address(escrow)), 2 + 10);
     }
 
+    function test_collectFee() public {
+        escrow.setFee(1000);
+        Escrow.Payment[] memory payments = new Escrow.Payment[](2);
+        payments[0] = Escrow.Payment({
+            amount: 10,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        payments[1] = Escrow.Payment({
+            amount: 20,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
+            payer: msg.sender,
+            payee: vm.addr(1),
+            token: address(token),
+            payments: payments
+        });
+        token.mint(msg.sender, 30);
+        
+        vm.startPrank(msg.sender);
+        token.approve(address(escrow), 30);
+        escrow.createEscrow(escrowInfo);
+        uint256[] memory indices = new uint256[](2);
+        indices[0] = 0;
+        indices[1] = 1;
+        escrow.depositPayments(0, indices);
+        assertEq(token.balanceOf(address(escrow)), 30);
+        escrow.unlockPayment(0, 1);
+        vm.stopPrank();
+        
+        Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
+        assertEq(escrowInfo3.payments[0].unlocked, false);
+        assertEq(escrowInfo3.payments[1].unlocked, true);
+
+        vm.prank(vm.addr(1));
+        escrow.withdrawAll(0);
+
+        Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
+        assertEq(escrowInfo4.payments[0].paid, false);
+        assertEq(escrowInfo4.payments[1].paid, true);
+        assertEq(token.balanceOf(vm.addr(1)), 18);
+        assertEq(token.balanceOf(address(escrow)), 2 + 10);
+
+        escrow.collectFee(address(token));
+        assertEq(token.balanceOf(address(escrow)), 10);
+        assertEq(token.balanceOf(address(this)), 2);
+    }
+
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
