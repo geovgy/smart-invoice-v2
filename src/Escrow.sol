@@ -20,7 +20,6 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
     struct EscrowInfo {
         address payer;
-        address payee;
         address token;
         Payment[] payments;
         address arbitrator;
@@ -28,12 +27,12 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     }
 
     uint256 internal _counter;
-    uint256 internal _basisPoints;
+    uint256 internal _feeBasisPts;
     mapping(address token => uint256 amount) internal _feeBalances;
     mapping(uint256 tokenId => EscrowInfo escrow) internal _escrows;
-    mapping(uint256 tokenId => uint256 fee) internal _escrowArbBP;
+    mapping(uint256 tokenId => uint256 fee) internal _escrowArbitrationFeeBP;
     mapping(address arbitrator => bool valid) internal _arbitrators;
-    mapping(address arbitrator => uint256 fee) internal _arbitratorBasisPoints;
+    mapping(address arbitrator => uint256 fee) internal _arbitratorFeeBasisPts;
 
 
     event Create(uint256 tokenId, address payer, address payee, address token, uint256 amount, address arbitrator);
@@ -41,8 +40,8 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     event DepositBatch(uint256 invoiceId, uint256[] indices, uint256 amount, address from);
     event Unlock(uint256 invoiceId, uint256 index);
     event UnlockBatch(uint256 invoiceId, uint256[] indices);
-    event Paid(uint256 invoiceId, uint256 index, uint256 amount);
-    event PaidBatch(uint256 invoiceId, uint256 amount);
+    event Paid(uint256 invoiceId, uint256 index, address to, uint256 amount);
+    event PaidBatch(uint256 invoiceId, address to, uint256 amount);
     event Dispute(uint256 invoiceId, address from, bytes32 details);
     event Resolve(uint256 invoiceId, address arbitrator, uint256 payerAmount, uint256 payeeAmount, bytes32 details);
 
@@ -65,10 +64,11 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
 
     function createEscrow(
+        address payee,
         EscrowInfo calldata escrow
     ) external nonReentrant {
+        require(payee != address(0), "Escrow: payee is the zero address");
         require(escrow.payer != address(0), "Escrow: payer is the zero address");
-        require(escrow.payee != address(0), "Escrow: payee is the zero address");
         require(escrow.token != address(0), "Escrow: token is the zero address");
         require(
             escrow.arbitrator != address(0) && _arbitrators[escrow.arbitrator], 
@@ -88,14 +88,14 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         }
 
         uint256 tokenId = _counter;
-        uint256 arbBP = _arbitratorBasisPoints[escrow.arbitrator];
+        uint256 arbBP = _arbitratorFeeBasisPts[escrow.arbitrator];
         _escrows[tokenId] = escrow;
-        _escrowArbBP[tokenId] = arbBP;
+        _escrowArbitrationFeeBP[tokenId] = arbBP;
 
         _increment();
-        _safeMint(escrow.payee, tokenId);
+        _safeMint(payee, tokenId);
 
-        emit Create(tokenId, escrow.payer, escrow.payee, escrow.token, total, escrow.arbitrator);
+        emit Create(tokenId, escrow.payer, payee, escrow.token, total, escrow.arbitrator);
     }
 
     function depositPayment(uint256 tokenId, uint256 index) external nonReentrant {
@@ -168,7 +168,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     function withdrawPayment(uint256 tokenId, uint256 index) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
-        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
         require(_escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
         require(_escrows[tokenId].payments[index].unlocked, "Escrow: payment not unlocked");
         require(!_escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
@@ -179,15 +179,15 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         _escrows[tokenId].payments[index].paid = true;
         _feeBalances[_escrows[tokenId].token] += fee;
 
-        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
+        IERC20(_escrows[tokenId].token).transfer(msg.sender, amount);
 
-        emit Paid(tokenId, index, amount);
+        emit Paid(tokenId, index, msg.sender, amount);
     }
 
     function withdrawPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         require(indices.length > 0, "Escrow: indices is empty");
-        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
 
         uint256 amount;
         for (uint256 i = 0; i < indices.length; i++) {
@@ -206,14 +206,14 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         }
         _feeBalances[_escrows[tokenId].token] += fee;
 
-        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
+        IERC20(_escrows[tokenId].token).transfer(msg.sender, amount);
 
-        emit PaidBatch(tokenId, amount);
+        emit PaidBatch(tokenId, msg.sender, amount);
     }
 
     function withdrawAll(uint256 tokenId) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(_escrows[tokenId].payee == msg.sender, "Escrow: caller is not the payee");
+        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
 
         uint256 amount;
         EscrowInfo storage escrow = _escrows[tokenId];
@@ -233,16 +233,16 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         _escrows[tokenId] = escrow;
         _feeBalances[_escrows[tokenId].token] += fee;
 
-        IERC20(_escrows[tokenId].token).transfer(_escrows[tokenId].payee, amount);
+        IERC20(_escrows[tokenId].token).transfer(msg.sender, amount);
 
-        emit PaidBatch(tokenId, amount);
+        emit PaidBatch(tokenId, msg.sender, amount);
     }
 
     function dispute(uint256 tokenId, bytes32 disputeDetails) external nonReentrant {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
         require(
-            _escrows[tokenId].payer == msg.sender || _escrows[tokenId].payee == msg.sender, 
+            _escrows[tokenId].payer == msg.sender || _ownerOf(tokenId) == msg.sender, 
             "Escrow: caller is not the payer or payee"
         );
         bool isLockable;
@@ -280,7 +280,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
             }
         }
         uint256 fee = getFee(total);
-        uint256 arbitrationFee = total * _escrowArbBP[tokenId] / _MAX_BASIS_POINTS;
+        uint256 arbitrationFee = total * _escrowArbitrationFeeBP[tokenId] / _MAX_BASIS_POINTS;
 
         require(
             payerAmount + payeeAmount == total - arbitrationFee - fee,
@@ -288,7 +288,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         );
 
         if (payeeAmount > 0) {
-            IERC20(escrow.token).transfer(escrow.payee, payeeAmount);
+            IERC20(escrow.token).transfer(_ownerOf(tokenId), payeeAmount);
         }
         if (payerAmount > 0) {
             IERC20(escrow.token).transfer(escrow.payer, payerAmount);
@@ -306,7 +306,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
     function setFee(uint256 basisPoints) external onlyOwner {
         require(basisPoints <= _MAX_BASIS_POINTS, "Escrow: basisPoints exceeds maximum limit");
-        _basisPoints = basisPoints;
+        _feeBasisPts = basisPoints;
     }
 
     function collectFee(address token) external onlyOwner nonReentrant {
@@ -320,17 +320,17 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(arbitrator != address(0), "Escrow: arbitrator is the zero address");
         require(fee <= _MAX_BASIS_POINTS, "Escrow: fee exceeds maximum limit");
         _arbitrators[arbitrator] = true;
-        _arbitratorBasisPoints[arbitrator] = fee;
+        _arbitratorFeeBasisPts[arbitrator] = fee;
     }
 
     function removeArbitrator(address arbitrator) external onlyOwner {
         require(arbitrator != address(0), "Escrow: arbitrator is the zero address");
         _arbitrators[arbitrator] = false;
-        _arbitratorBasisPoints[arbitrator] = 0;
+        _arbitratorFeeBasisPts[arbitrator] = 0;
     }
 
     function getArbitrator(address arbitrator) external view returns (bool valid, uint256 basisPoints) {
-        return (_arbitrators[arbitrator], _arbitratorBasisPoints[arbitrator]);
+        return (_arbitrators[arbitrator], _arbitratorFeeBasisPts[arbitrator]);
     }
 
     function getEscrow(uint256 tokenId) external view returns (EscrowInfo memory) {
@@ -339,7 +339,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     }
 
     function getFee(uint256 amount) public view returns (uint256) {
-        return amount * _basisPoints / _MAX_BASIS_POINTS;
+        return amount * _feeBasisPts / _MAX_BASIS_POINTS;
     }
 
     function totalSupply() external view returns (uint256) {
