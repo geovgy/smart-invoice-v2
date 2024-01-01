@@ -46,11 +46,26 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     event Resolve(uint256 invoiceId, address arbitrator, uint256 payerAmount, uint256 payeeAmount, bytes32 details);
 
 
+    modifier whenEscrowIsNotLocked(uint256 tokenId) {
+        require(_exists(tokenId), "Escrow: tokenId does not exist");
+        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+        _;
+    }
+
     modifier onlyArbitrator(uint256 tokenId) {
         require(_exists(tokenId), "Escrow: tokenId does not exist");
         require(
             _escrows[tokenId].arbitrator == msg.sender, 
             "Escrow: caller is not the arbitrator"
+        );
+        _;
+    }
+
+    modifier onlyPayee(uint256 tokenId) {
+        require(_exists(tokenId), "Escrow: tokenId does not exist");
+        require(
+            _ownerOf(tokenId) == msg.sender, 
+            "Escrow: caller is not the payee"
         );
         _;
     }
@@ -98,9 +113,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit Create(tokenId, escrow.payer, payee, escrow.token, total, escrow.arbitrator);
     }
 
-    function depositPayment(uint256 tokenId, uint256 index) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+    function depositPayment(
+        uint256 tokenId, 
+        uint256 index
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
         require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
         require(!_escrows[tokenId].payments[index].unlocked, "Escrow: payment already unlocked");
         require(!_escrows[tokenId].payments[index].funded, "Escrow: payment already funded");
@@ -111,9 +127,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit Deposit(tokenId, index, _escrows[tokenId].payments[index].amount, msg.sender);
     }
 
-    function depositPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+    function depositPayments(
+        uint256 tokenId, 
+        uint256[] calldata indices
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
         require(indices.length > 0, "Escrow: indices is empty");
 
         uint256 amount;
@@ -133,9 +150,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit DepositBatch(tokenId, indices, amount, msg.sender);
     }
 
-    function unlockPayment(uint256 tokenId, uint256 index) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+    function unlockPayment(
+        uint256 tokenId, 
+        uint256 index
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
         require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
         require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
         require(_escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
@@ -146,9 +164,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit Unlock(tokenId, index);
     }
 
-    function unlockPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+    function unlockPayments(
+        uint256 tokenId, 
+        uint256[] calldata indices
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
         require(indices.length > 0, "Escrow: indices is empty");
         require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
 
@@ -165,10 +184,11 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit UnlockBatch(tokenId, indices);
     }
 
-    function withdrawPayment(uint256 tokenId, uint256 index) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
+    function withdrawPayment(
+        uint256 tokenId, 
+        uint256 index
+    ) external onlyPayee(tokenId) nonReentrant {
         require(index < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
-        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
         require(_escrows[tokenId].payments[index].funded, "Escrow: payment not funded");
         require(_escrows[tokenId].payments[index].unlocked, "Escrow: payment not unlocked");
         require(!_escrows[tokenId].payments[index].paid, "Escrow: payment already paid");
@@ -184,10 +204,11 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit Paid(tokenId, index, msg.sender, amount);
     }
 
-    function withdrawPayments(uint256 tokenId, uint256[] calldata indices) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
+    function withdrawPayments(
+        uint256 tokenId, 
+        uint256[] calldata indices
+    ) external onlyPayee(tokenId) nonReentrant {
         require(indices.length > 0, "Escrow: indices is empty");
-        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
 
         uint256 amount;
         for (uint256 i = 0; i < indices.length; i++) {
@@ -211,10 +232,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit PaidBatch(tokenId, msg.sender, amount);
     }
 
-    function withdrawAll(uint256 tokenId) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(_ownerOf(tokenId) == msg.sender, "Escrow: caller is not the payee");
-
+    function withdrawAll(uint256 tokenId) external onlyPayee(tokenId) nonReentrant {
         uint256 amount;
         EscrowInfo storage escrow = _escrows[tokenId];
         for (uint256 i = 0; i < _escrows[tokenId].payments.length; i++) {
@@ -238,9 +256,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit PaidBatch(tokenId, msg.sender, amount);
     }
 
-    function dispute(uint256 tokenId, bytes32 disputeDetails) external nonReentrant {
-        require(_exists(tokenId), "Escrow: tokenId does not exist");
-        require(!_escrows[tokenId].locked, "Escrow: escrow is locked");
+    function dispute(
+        uint256 tokenId, 
+        bytes32 disputeDetails
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
         require(
             _escrows[tokenId].payer == msg.sender || _ownerOf(tokenId) == msg.sender, 
             "Escrow: caller is not the payer or payee"
@@ -284,7 +303,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
         require(
             payerAmount + payeeAmount == total - arbitrationFee - fee,
-            "Escrow: resolution != remainder"
+            "Escrow: sum of resolution amounts does not equal total minus fees"
         );
 
         if (payeeAmount > 0) {
@@ -316,7 +335,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         IERC20(_escrows[0].token).transfer(owner(), rev);
     }
 
-    function setArbitrator(address arbitrator, uint256 fee) external onlyOwner {
+    function setArbitrator(
+        address arbitrator, 
+        uint256 fee
+    ) external onlyOwner {
         require(arbitrator != address(0), "Escrow: arbitrator is the zero address");
         require(fee <= _MAX_BASIS_POINTS, "Escrow: fee exceeds maximum limit");
         _arbitrators[arbitrator] = true;
