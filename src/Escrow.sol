@@ -81,9 +81,9 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
                 escrow.payments[i].amount > 0 && escrow.payments[i].amount <= _MAX_AMOUNT, 
                 "Escrow: amount is zero or exceeds maximum limit"
             );
-            require(!escrow.payments[i].funded, "Escrow: payment already funded");
-            require(!escrow.payments[i].unlocked, "Escrow: payment already unlocked");
-            require(!escrow.payments[i].paid, "Escrow: payment already paid");
+            require(!escrow.payments[i].funded, "Escrow: payment cannot be already funded");
+            require(!escrow.payments[i].unlocked, "Escrow: payment cannot be already unlocked");
+            require(!escrow.payments[i].paid, "Escrow: payment cannot be already paid");
             total += escrow.payments[i].amount;
         }
 
