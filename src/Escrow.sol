@@ -23,6 +23,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         address token;
         Payment[] payments;
         address arbitrator;
+        uint256 deadline;
         bool locked;
     }
 
@@ -44,6 +45,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     event PaidBatch(uint256 invoiceId, address to, uint256 amount);
     event Dispute(uint256 invoiceId, address from, bytes32 details);
     event Resolve(uint256 invoiceId, address arbitrator, uint256 payerAmount, uint256 payeeAmount, bytes32 details);
+    event Withdraw(uint256 invoiceId, address to, uint256 amount);
 
 
     modifier whenEscrowIsNotLocked(uint256 tokenId) {
@@ -77,6 +79,9 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         string memory symbol
     ) ERC721(name, symbol) Ownable(owner) {}
 
+    // TO DO:
+    // - function for payee or payer to burn escrow after payout/withdrawal
+
 
     function createEscrow(
         address payee,
@@ -90,8 +95,9 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
             "Escrow: arbitrator is the zero address or not valid"
         );
         require(escrow.payments.length > 0, "Escrow: payments is empty");
+        require(escrow.deadline > block.timestamp, "Escrow: deadline is in the past");
         uint256 total;
-        for (uint256 i = 0; i < escrow.payments.length; i++) {
+        for (uint256 i; i < escrow.payments.length; i++) {
             require(
                 escrow.payments[i].amount > 0 && escrow.payments[i].amount <= _MAX_AMOUNT, 
                 "Escrow: amount is zero or exceeds maximum limit"
@@ -134,7 +140,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(indices.length > 0, "Escrow: indices is empty");
 
         uint256 amount;
-        for (uint256 i = 0; i < indices.length; i++) {
+        for (uint256 i; i < indices.length; i++) {
             require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
             require(!_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment already unlocked");
             require(!_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment already funded");
@@ -143,7 +149,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         
         IERC20(_escrows[tokenId].token).transferFrom(msg.sender, address(this), amount);
 
-        for (uint256 i = 0; i < indices.length; i++) {
+        for (uint256 i; i < indices.length; i++) {
             _escrows[tokenId].payments[indices[i]].funded = true;
         }
 
@@ -171,20 +177,20 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         require(indices.length > 0, "Escrow: indices is empty");
         require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
 
-        for (uint256 i = 0; i < indices.length; i++) {
+        for (uint256 i; i < indices.length; i++) {
             require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
             require(_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment not funded");
             require(!_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment already unlocked");
         }
 
-        for (uint256 i = 0; i < indices.length; i++) {
+        for (uint256 i; i < indices.length; i++) {
             _escrows[tokenId].payments[indices[i]].unlocked = true;
         }
 
         emit UnlockBatch(tokenId, indices);
     }
 
-    function withdrawPayment(
+    function collectPayment(
         uint256 tokenId, 
         uint256 index
     ) external onlyPayee(tokenId) nonReentrant {
@@ -204,14 +210,14 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit Paid(tokenId, index, msg.sender, amount);
     }
 
-    function withdrawPayments(
+    function collectPayments(
         uint256 tokenId, 
         uint256[] calldata indices
     ) external onlyPayee(tokenId) nonReentrant {
         require(indices.length > 0, "Escrow: indices is empty");
 
         uint256 amount;
-        for (uint256 i = 0; i < indices.length; i++) {
+        for (uint256 i; i < indices.length; i++) {
             require(indices[i] < _escrows[tokenId].payments.length, "Escrow: index out of bounds");
             require(_escrows[tokenId].payments[indices[i]].funded, "Escrow: payment not funded");
             require(_escrows[tokenId].payments[indices[i]].unlocked, "Escrow: payment not unlocked");
@@ -232,10 +238,10 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit PaidBatch(tokenId, msg.sender, amount);
     }
 
-    function withdrawAll(uint256 tokenId) external onlyPayee(tokenId) nonReentrant {
+    function collectPayments(uint256 tokenId) external onlyPayee(tokenId) nonReentrant {
         uint256 amount;
         EscrowInfo storage escrow = _escrows[tokenId];
-        for (uint256 i = 0; i < _escrows[tokenId].payments.length; i++) {
+        for (uint256 i; i < _escrows[tokenId].payments.length; i++) {
             bool funded = escrow.payments[i].funded;
             bool unlocked = escrow.payments[i].unlocked;
             bool paid = escrow.payments[i].paid;
@@ -256,6 +262,61 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         emit PaidBatch(tokenId, msg.sender, amount);
     }
 
+    function withdrawPayments(uint256 tokenId) external whenEscrowIsNotLocked(tokenId) nonReentrant {
+        require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
+        require(_escrows[tokenId].deadline < block.timestamp, "Escrow: deadline has not passed");
+        
+        uint256 amount;
+        bool funded;
+        bool unlocked;
+        bool paid;
+        EscrowInfo storage escrow = _escrows[tokenId];
+        for (uint256 i; i < _escrows[tokenId].payments.length; i++) {
+            funded = escrow.payments[i].funded;
+            unlocked = escrow.payments[i].unlocked;
+            paid = escrow.payments[i].paid;
+            if (funded && !unlocked && !paid) {
+                escrow.payments[i].funded = false;
+                amount += escrow.payments[i].amount;
+            }
+        }
+
+        _escrows[tokenId] = escrow;
+        IERC20(_escrows[tokenId].token).transfer(msg.sender, amount);
+
+        emit Withdraw(tokenId, msg.sender, amount);
+    }
+
+    function changeArbitrator(
+        uint256 tokenId, 
+        address arbitrator
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
+        require(
+            _escrows[tokenId].payer == msg.sender || _ownerOf(tokenId) == msg.sender, 
+            "Escrow: caller is not the payer or payee"
+        );
+        require(arbitrator != address(0), "Escrow: arbitrator is the zero address");
+        require(_arbitrators[arbitrator], "Escrow: arbitrator is not valid");
+        require(
+            _escrows[tokenId].payer != arbitrator && _ownerOf(tokenId) != arbitrator, 
+            "Escrow: arbitrator cannot be payer or payee"
+        );
+
+        _escrows[tokenId].arbitrator = arbitrator;
+        _escrowArbitrationFeeBP[tokenId] = _arbitratorFeeBasisPts[arbitrator];
+    }
+
+    function changePayer(
+        uint256 tokenId, 
+        address payer
+    ) external whenEscrowIsNotLocked(tokenId) nonReentrant {
+        require(_escrows[tokenId].payer == msg.sender, "Escrow: caller is not the payer");
+        require(payer != address(0), "Escrow: payer is the zero address");
+        require(_escrows[tokenId].payer != payer, "Escrow: new payer equals the current payer");
+
+        _escrows[tokenId].payer = payer;
+    }
+
     function dispute(
         uint256 tokenId, 
         bytes32 disputeDetails
@@ -265,7 +326,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
             "Escrow: caller is not the payer or payee"
         );
         bool isLockable;
-        for(uint256 i = 0; i < _escrows[tokenId].payments.length; i++) {
+        for(uint256 i; i < _escrows[tokenId].payments.length; i++) {
             if (!_escrows[tokenId].payments[i].unlocked) {
                 isLockable = true;
                 break;

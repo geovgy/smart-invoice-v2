@@ -20,6 +20,13 @@ contract EscrowTest is Test {
         escrow.setArbitrator(arbitrator, 0);
     }
 
+    //
+    // TO DO:
+    // - test changeArbitrator
+    // - test changePayer
+    // - test withdrawPayments
+    //
+
     function test_dispute() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
@@ -33,6 +40,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         escrow.createEscrow(vm.addr(1), escrowInfo1);
@@ -64,6 +72,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         escrow.createEscrow(vm.addr(1), escrowInfo1);
@@ -144,6 +153,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         escrow.createEscrow(vm.addr(1), escrowInfo);
@@ -163,6 +173,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         escrow.createEscrow(vm.addr(1), escrowInfo);
@@ -189,6 +200,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
 
@@ -197,6 +209,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
 
@@ -218,6 +231,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 1);
@@ -244,6 +258,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 1);
@@ -261,7 +276,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[0].unlocked, true);
     }
 
-    function test_withdrawPayment() public {
+    function test_collectPayment() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
             amount: 1,
@@ -274,6 +289,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 1);
@@ -290,13 +306,13 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
         assertEq(escrowInfo3.payments[0].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, true);
         assertEq(token.balanceOf(address(vm.addr(1))), 1);
     }
 
-    function test_withdrawPayment_afterTransferToNewPayee() public {
+    function test_collectPayment_afterTransferToNewPayee() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
             amount: 1,
@@ -309,6 +325,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         
@@ -324,11 +341,11 @@ contract EscrowTest is Test {
         escrow.safeTransferFrom(vm.addr(1), vm.addr(2), 0);
 
         vm.expectRevert();
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
         vm.stopPrank();
 
         vm.prank(vm.addr(2));
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
 
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, true);
@@ -354,6 +371,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 3);
@@ -390,6 +408,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 3);
@@ -412,7 +431,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[1].unlocked, true);
     }
 
-    function test_withdrawPayments() public {
+    function test_collectPayments() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](2);
         payments[0] = Escrow.Payment({
             amount: 1,
@@ -431,6 +450,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 3);
@@ -452,14 +472,14 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[0].unlocked, true);
         assertEq(escrowInfo3.payments[1].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawPayments(0, indices);
+        escrow.collectPayments(0, indices);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, true);
         assertEq(escrowInfo4.payments[1].paid, true);
         assertEq(token.balanceOf(address(vm.addr(1))), 3);
     }
 
-    function test_withdrawAll() public {
+    function test_collectAll() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](2);
         payments[0] = Escrow.Payment({
             amount: 1,
@@ -478,6 +498,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 3);
@@ -499,7 +520,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[0].unlocked, false);
         assertEq(escrowInfo3.payments[1].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawAll(0);
+        escrow.collectPayments(0);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, false);
         assertEq(escrowInfo4.payments[1].paid, true);
@@ -516,7 +537,7 @@ contract EscrowTest is Test {
         vm.stopPrank();
     }
 
-    function test_withdrawPayment_withFee() public {
+    function test_collectPayment_withFee() public {
         escrow.setFee(1000);
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
@@ -530,6 +551,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 10);
@@ -546,14 +568,14 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
         assertEq(escrowInfo3.payments[0].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, true);
         assertEq(token.balanceOf(address(vm.addr(1))), 9);
         assertEq(token.balanceOf(address(escrow)), 1);
     }
 
-    function test_withdrawPayments_withFee() public {
+    function test_collectPayments_withFee() public {
         escrow.setFee(1000);
         Escrow.Payment[] memory payments = new Escrow.Payment[](2);
         payments[0] = Escrow.Payment({
@@ -573,6 +595,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 30);
@@ -594,7 +617,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[0].unlocked, true);
         assertEq(escrowInfo3.payments[1].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawPayments(0, indices);
+        escrow.collectPayments(0, indices);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, true);
         assertEq(escrowInfo4.payments[1].paid, true);
@@ -602,7 +625,7 @@ contract EscrowTest is Test {
         assertEq(token.balanceOf(address(escrow)), 3);
     }
 
-    function test_withdrawAll_withFee() public {
+    function test_collectAll_withFee() public {
         escrow.setFee(1000);
         Escrow.Payment[] memory payments = new Escrow.Payment[](2);
         payments[0] = Escrow.Payment({
@@ -622,6 +645,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 30);
@@ -643,7 +667,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[0].unlocked, false);
         assertEq(escrowInfo3.payments[1].unlocked, true);
         vm.prank(vm.addr(1));
-        escrow.withdrawAll(0);
+        escrow.collectPayments(0);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, false);
         assertEq(escrowInfo4.payments[1].paid, true);
@@ -671,6 +695,7 @@ contract EscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, 30);
@@ -691,7 +716,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.payments[1].unlocked, true);
 
         vm.prank(vm.addr(1));
-        escrow.withdrawAll(0);
+        escrow.collectPayments(0);
 
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         assertEq(escrowInfo4.payments[0].paid, false);

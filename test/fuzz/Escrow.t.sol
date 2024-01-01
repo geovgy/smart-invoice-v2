@@ -37,6 +37,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, amount);
@@ -75,6 +76,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, total);
@@ -117,6 +119,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, total);
@@ -127,7 +130,7 @@ contract FuzzEscrowTest is Test {
         escrow.unlockPayments(0, indices);
         vm.stopPrank();
         vm.prank(vm.addr(1));
-        escrow.withdrawPayments(0, indices);
+        escrow.collectPayments(0, indices);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         uint totalDeposit;
         for(uint256 i; i < indices.length; i++) {
@@ -161,6 +164,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, total);
@@ -177,7 +181,7 @@ contract FuzzEscrowTest is Test {
         vm.stopPrank();
 
         vm.prank(vm.addr(1));
-        escrow.withdrawAll(0);
+        escrow.collectPayments(0);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
         for(uint256 i; i < indices.length; i++) {
             assertEq(escrowInfo4.payments[indices[i]].funded, true);
@@ -203,6 +207,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, amount);
@@ -215,7 +220,7 @@ contract FuzzEscrowTest is Test {
         vm.stopPrank();
 
         vm.prank(vm.addr(1));
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
         
         uint256 feeAmount = escrow.getFee(amount);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
@@ -241,6 +246,7 @@ contract FuzzEscrowTest is Test {
             token: address(token),
             payments: payments,
             arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
             locked: false
         });
         token.mint(msg.sender, amount);
@@ -253,7 +259,7 @@ contract FuzzEscrowTest is Test {
         vm.stopPrank();
 
         vm.prank(vm.addr(1));
-        escrow.withdrawPayment(0, 0);
+        escrow.collectPayment(0, 0);
         
         uint256 feeAmount = escrow.getFee(amount);
         Escrow.EscrowInfo memory escrowInfo4 = escrow.getEscrow(0);
