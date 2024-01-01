@@ -35,6 +35,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -74,6 +75,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -117,6 +119,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -162,6 +165,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -205,6 +209,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -244,6 +249,7 @@ contract FuzzEscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,

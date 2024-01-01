@@ -31,6 +31,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -51,6 +52,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -78,6 +80,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -87,6 +90,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo2 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -109,6 +113,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -142,6 +147,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -173,6 +179,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -210,6 +217,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -246,6 +254,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -282,6 +291,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -323,6 +333,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -366,6 +377,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -415,6 +427,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -464,6 +477,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -513,6 +527,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -556,6 +571,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -588,6 +604,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -632,6 +649,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -670,6 +688,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -698,6 +717,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,
@@ -740,6 +760,7 @@ contract EscrowTest is Test {
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
             payer: msg.sender,
             token: address(token),
+            details: "",
             payments: payments,
             arbitrator: arbitrator,
             deadline: block.timestamp + 3600,

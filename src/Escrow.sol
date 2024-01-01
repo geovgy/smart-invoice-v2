@@ -21,6 +21,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     struct EscrowInfo {
         address payer;
         address token;
+        string details;
         Payment[] payments;
         address arbitrator;
         uint256 deadline;
