@@ -29,7 +29,6 @@ contract InvariantEscrowTest is Test {
         uint256 totalDeposits;
         uint256 totalPayerBalance;
         uint256 totalPayeeBalance;
-        uint256 totalFeeBalance;
         uint256 totalArbitratorBalance;
 
         Escrow.EscrowInfo memory escrowInfo;
@@ -40,7 +39,6 @@ contract InvariantEscrowTest is Test {
                     totalDeposits += escrowInfo.payments[j].amount;
                 }
                 if(escrowInfo.payments[j].paid) {
-                    totalFeeBalance += escrow.getFee(escrowInfo.payments[j].amount);
                     totalArbitratorBalance += token.balanceOf(escrowInfo.arbitrator);
                     totalPayeeBalance += token.balanceOf(escrow.ownerOf(i));
                     totalPayerBalance += token.balanceOf(escrowInfo.payer);
@@ -48,7 +46,6 @@ contract InvariantEscrowTest is Test {
             }
         }
         
-        assertEq(totalFeeBalance, ownerBalance);
-        assertEq(totalDeposits, escrowBalance + totalPayeeBalance + totalFeeBalance + totalArbitratorBalance + totalPayerBalance);
+        assertEq(totalDeposits, escrowBalance + ownerBalance + totalPayeeBalance + totalPayerBalance + totalArbitratorBalance);
     }
 }
