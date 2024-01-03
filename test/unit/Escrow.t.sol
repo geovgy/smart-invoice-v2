@@ -29,7 +29,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -37,7 +36,7 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         assertEq(escrow.balanceOf(vm.addr(1)), 1);
     }
 
@@ -50,7 +49,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -58,10 +56,12 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
-        assertEq(escrowInfo2.payer, msg.sender);
-        assertEq(escrow.ownerOf(0), vm.addr(1));
+        assertEq(escrow.payerOf(0), msg.sender);
+        assertEq(escrow.ownerOf(0), msg.sender);
+        assertEq(escrow.payeeOf(0), vm.addr(1));
+        assertEq(escrow.ownerOf(1), vm.addr(1));
         assertEq(escrowInfo2.token, address(token));
         assertEq(escrowInfo2.payments[0].amount, 1);
         assertEq(escrowInfo2.payments[0].funded, false);
@@ -78,7 +78,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -88,7 +87,6 @@ contract EscrowTest is Test {
         });
 
         Escrow.EscrowInfo memory escrowInfo2 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -97,9 +95,9 @@ contract EscrowTest is Test {
             locked: false
         });
 
-        escrow.createEscrow(vm.addr(1), escrowInfo1);
-        escrow.createEscrow(vm.addr(2), escrowInfo2);
-        assertEq(escrow.totalSupply(), 2);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
+        escrow.createEscrow(vm.addr(2), msg.sender, escrowInfo2);
+        assertEq(escrow.totalSupply(), 4);
     }
 
     function test_depositPayment() public {
@@ -111,7 +109,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -122,7 +119,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 1);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
         assertEq(token.balanceOf(address(escrow)), 1);
@@ -145,7 +142,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -156,7 +152,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 3);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -177,7 +173,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -188,7 +183,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 1);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
         assertEq(token.balanceOf(address(escrow)), 1);
@@ -215,7 +210,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -226,7 +220,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 3);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -252,7 +246,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -263,7 +256,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 1);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 1);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
         assertEq(token.balanceOf(address(escrow)), 1);
@@ -289,7 +282,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -301,13 +293,13 @@ contract EscrowTest is Test {
         vm.startPrank(msg.sender);
         token.mint(msg.sender, 1);
         token.approve(address(escrow), 1);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         escrow.unlockPayment(0, 0);
         vm.stopPrank();
         
         vm.startPrank(vm.addr(1));
-        escrow.safeTransferFrom(vm.addr(1), vm.addr(2), 0);
+        escrow.safeTransferFrom(vm.addr(1), vm.addr(2), 1);
 
         vm.expectRevert();
         escrow.collectPayment(0, 0);
@@ -331,7 +323,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -342,7 +333,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 10);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 10);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
         assertEq(token.balanceOf(address(escrow)), 10);
@@ -375,7 +366,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -386,7 +376,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 3);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -425,7 +415,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -436,7 +425,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 30);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 30);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -475,7 +464,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -486,7 +474,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 3);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 3);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -525,7 +513,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -536,7 +523,7 @@ contract EscrowTest is Test {
         token.mint(msg.sender, 30);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 30);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;
@@ -569,7 +556,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -577,7 +563,7 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo1);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
 
         vm.startPrank(vm.addr(uint256(keccak256("random"))));
         vm.expectRevert();
@@ -602,7 +588,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -610,7 +595,7 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo1);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
         
         token.mint(msg.sender, 10000);
         vm.startPrank(msg.sender);
@@ -647,7 +632,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -659,7 +643,7 @@ contract EscrowTest is Test {
         vm.startPrank(msg.sender);
         token.mint(msg.sender, 1);
         token.approve(address(escrow), 1);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
 
@@ -686,7 +670,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -694,7 +677,7 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo1);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
         
         Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
         assertEq(escrowInfo2.arbitrator, arbitrator);
@@ -706,7 +689,7 @@ contract EscrowTest is Test {
         assertEq(escrowInfo3.arbitrator, vm.addr(2));
     }
 
-    function test_changePayer() public {
+    function test_transfer_payer() public {
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
             amount: 100,
@@ -715,7 +698,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -723,13 +705,36 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), escrowInfo1);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
         
         vm.prank(msg.sender);
-        escrow.changePayer(0, vm.addr(2));
+        escrow.safeTransferFrom(msg.sender, vm.addr(2), 0);
         
-        Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
-        assertEq(escrowInfo2.payer, vm.addr(2));
+        assertEq(escrow.payerOf(0), vm.addr(2));
+    }
+
+    function test_transfer_payee() public {
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: 100,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+            token: address(token),
+            details: "",
+            payments: payments,
+            arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
+            locked: false
+        });
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
+        
+        vm.prank(vm.addr(1));
+        escrow.safeTransferFrom(vm.addr(1), vm.addr(2), 1);
+        
+        assertEq(escrow.payeeOf(0), vm.addr(2));
     }
 
     function test_setFee() public {
@@ -758,7 +763,6 @@ contract EscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -770,7 +774,7 @@ contract EscrowTest is Test {
         
         vm.startPrank(msg.sender);
         token.approve(address(escrow), 30);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](2);
         indices[0] = 0;
         indices[1] = 1;

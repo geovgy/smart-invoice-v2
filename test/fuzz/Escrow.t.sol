@@ -33,7 +33,6 @@ contract FuzzEscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -44,7 +43,7 @@ contract FuzzEscrowTest is Test {
         token.mint(msg.sender, amount);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), amount);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         vm.stopPrank();
         assertEq(token.balanceOf(address(escrow)), amount);
@@ -73,7 +72,6 @@ contract FuzzEscrowTest is Test {
             });
         }
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -84,7 +82,7 @@ contract FuzzEscrowTest is Test {
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), total);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayments(0, indices);
         vm.stopPrank();
         Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
@@ -117,7 +115,6 @@ contract FuzzEscrowTest is Test {
             });
         }
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -128,7 +125,7 @@ contract FuzzEscrowTest is Test {
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), total);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayments(0, indices);
         escrow.unlockPayments(0, indices);
         vm.stopPrank();
@@ -163,7 +160,6 @@ contract FuzzEscrowTest is Test {
             total += amounts[i];
         }
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -174,7 +170,7 @@ contract FuzzEscrowTest is Test {
         token.mint(msg.sender, total);
         vm.startPrank(msg.sender);
         token.approve(address(escrow), total);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         uint256[] memory indices = new uint256[](amounts.length);
         for(uint256 i; i < indices.length; i++) {
             indices[i] = i;
@@ -207,7 +203,6 @@ contract FuzzEscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -219,7 +214,7 @@ contract FuzzEscrowTest is Test {
         
         vm.startPrank(msg.sender);
         token.approve(address(escrow), amount);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         escrow.unlockPayment(0, 0);
         vm.stopPrank();
@@ -247,7 +242,6 @@ contract FuzzEscrowTest is Test {
             paid: false
         });
         Escrow.EscrowInfo memory escrowInfo = Escrow.EscrowInfo({
-            payer: msg.sender,
             token: address(token),
             details: "",
             payments: payments,
@@ -259,7 +253,7 @@ contract FuzzEscrowTest is Test {
         
         vm.startPrank(msg.sender);
         token.approve(address(escrow), amount);
-        escrow.createEscrow(vm.addr(1), escrowInfo);
+        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo);
         escrow.depositPayment(0, 0);
         escrow.unlockPayment(0, 0);
         vm.stopPrank();
