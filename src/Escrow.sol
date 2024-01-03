@@ -4,12 +4,19 @@ pragma solidity ^0.8.23;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 
-contract Escrow is ERC721, Ownable, ReentrancyGuard {
+contract Escrow is ERC721, Ownable, EIP712, ReentrancyGuard {
     uint256 private constant _MAX_BASIS_POINTS = 10000;
     uint256 private constant _MAX_AMOUNT = (2**256 - 1) / _MAX_BASIS_POINTS;
+
+    string private constant SIGNING_DOMAIN = "Escrow";
+    string private constant SIGNATURE_VERSION = "1";
+    
+    bytes32 private constant ARBITRATOR_REQUEST_TYPE_HASH = keccak256("ArbitratorRequest(uint256 invoiceId,address oldArbitrator,address newArbitrator,uint256 salt)");
 
     struct Payment {
         uint256 amount;
@@ -27,6 +34,19 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         bool locked;
     }
 
+    struct ArbitratorRequest {
+        uint256 invoiceId;
+        address oldArbitrator;
+        address newArbitrator;
+        uint256 salt;
+    }
+
+    struct ArbitratorRequestWithSignature {
+        ArbitratorRequest request;
+        address requestedBy;
+        bytes signature;
+    }
+
     uint256 internal _counter;
     uint256 internal _feeBasisPts;
     mapping(address token => uint256 amount) internal _feeBalances;
@@ -36,6 +56,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     mapping(uint256 invoiceId => uint256 fee) internal _escrowArbitrationFeeBP;
     mapping(address arbitrator => bool valid) internal _arbitrators;
     mapping(address arbitrator => uint256 fee) internal _arbitratorFeeBasisPts;
+    mapping(uint256 invoiceId => mapping(uint256 salt => bool used)) internal _usedSalts;
 
 
     event Create(uint256 invoiceId, address payer, address payee, address token, uint256 amount, address arbitrator);
@@ -48,6 +69,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
     event Dispute(uint256 invoiceId, address from, bytes32 details);
     event Resolve(uint256 invoiceId, address arbitrator, uint256 payerAmount, uint256 payeeAmount, bytes32 details);
     event Withdraw(uint256 invoiceId, address to, uint256 amount);
+    event ChangeArbitrator(uint256 invoiceId, address newArbitrator, address oldArbitrator);
 
 
     modifier whenEscrowIsNotLocked(uint256 invoiceId) {
@@ -79,7 +101,7 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         address owner,
         string memory name, 
         string memory symbol
-    ) ERC721(name, symbol) Ownable(owner) {}
+    ) ERC721(name, symbol) Ownable(owner) EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {}
 
     // TO DO:
     // - function for payee or payer to burn escrow after payout/withdrawal
@@ -318,6 +340,38 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
         _escrowArbitrationFeeBP[invoiceId] = _arbitratorFeeBasisPts[arbitrator];
     }
 
+    function changeArbitrator(
+        ArbitratorRequestWithSignature calldata data
+    ) external whenEscrowIsNotLocked(data.request.invoiceId) nonReentrant {
+        address payer = payerOf(data.request.invoiceId);
+        address payee = payeeOf(data.request.invoiceId);
+        require(
+            (data.requestedBy == payer && payee == msg.sender) ||
+            (data.requestedBy == payee && payer == msg.sender),
+            "Escrow: caller is wrong address"
+        );
+        require(
+            data.request.oldArbitrator == _escrows[data.request.invoiceId].arbitrator, 
+            "Escrow: old arbitrator does not match current arbitrator"
+        );
+        require(data.request.newArbitrator != address(0), "Escrow: arbitrator is the zero address");
+        require(_arbitrators[data.request.newArbitrator], "Escrow: arbitrator is not valid");
+        require(
+            payer != data.request.newArbitrator && payee != data.request.newArbitrator, 
+            "Escrow: arbitrator cannot be payer or payee"
+        );
+        require(!_usedSalts[data.request.invoiceId][data.request.salt], "Escrow: salt already used");
+
+        bytes32 hash = _hashArbitratorRequestStruct(data.request);
+        require(_isValidSignature(data.requestedBy, hash, data.signature), "Escrow: invalid signature");
+
+        _usedSalts[data.request.invoiceId][data.request.salt] = true;
+        _escrows[data.request.invoiceId].arbitrator = data.request.newArbitrator;
+        _escrowArbitrationFeeBP[data.request.invoiceId] = _arbitratorFeeBasisPts[data.request.newArbitrator];
+
+        emit ChangeArbitrator(data.request.invoiceId, data.request.newArbitrator, data.request.oldArbitrator);
+    }
+
     function dispute(
         uint256 invoiceId, 
         bytes32 disputeDetails
@@ -444,5 +498,30 @@ contract Escrow is ERC721, Ownable, ReentrancyGuard {
 
     function _exists(uint256 invoiceId) internal view returns (bool) {
         return invoiceId < _counter;
+    }
+
+    function _hashArbitratorRequestStruct(ArbitratorRequest calldata request)
+        internal
+        view
+        returns (bytes32)
+    {
+        bytes32 STRUCT_HASH = keccak256(
+            abi.encode(
+                ARBITRATOR_REQUEST_TYPE_HASH,
+                uint256(request.invoiceId),
+                address(request.oldArbitrator),
+                address(request.newArbitrator),
+                uint256(request.salt)
+            )
+        );
+        return _hashTypedDataV4(STRUCT_HASH);
+    }
+
+    function _isValidSignature(
+        address signer,
+        bytes32 hash,
+        bytes calldata signature
+    ) internal view returns (bool) {
+        return SignatureChecker.isValidSignatureNow(signer, hash, signature);
     }
 }
