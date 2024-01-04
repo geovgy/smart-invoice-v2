@@ -3,21 +3,25 @@ pragma solidity ^0.8.23;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Escrow} from "../../src/Escrow.sol";
+import {BaseEscrow} from "../utils/BaseEscrow.sol";
 import {TestERC20} from "../utils/TestERC20.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 
 contract EscrowTest is Test {
     Escrow public escrow;
+    BaseEscrow public baseEscrow;
     TestERC20 public token;
 
     address public arbitrator;
 
     function setUp() public {
         escrow = new Escrow(address(this), "Escrow", "ESCROW");
+        baseEscrow = new BaseEscrow(address(this), "Escrow", "ESCROW");
         token =  new TestERC20("TestERC20", "TEST", 0);
         arbitrator = vm.addr(uint256(keccak256("arbitrator")));
         escrow.setArbitrator(arbitrator, 0);
+        baseEscrow.setArbitrator(arbitrator, 0);
     }
 
     function test_createEscrow() public {
@@ -660,8 +664,37 @@ contract EscrowTest is Test {
         assertEq(token.balanceOf(address(escrow)), 0);
     }
 
-    function test_changeArbitrator() public {
-        escrow.setArbitrator(vm.addr(2), 100);
+    // function test_changeArbitrator() public {
+    //     escrow.setArbitrator(vm.addr(2), 100);
+    //     Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+    //     payments[0] = Escrow.Payment({
+    //         amount: 100,
+    //         funded: false,
+    //         unlocked: false,
+    //         paid: false
+    //     });
+    //     Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+    //         token: address(token),
+    //         details: "",
+    //         payments: payments,
+    //         arbitrator: arbitrator,
+    //         deadline: block.timestamp + 3600,
+    //         locked: false
+    //     });
+    //     escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
+        
+    //     Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
+    //     assertEq(escrowInfo2.arbitrator, arbitrator);
+        
+    //     vm.prank(msg.sender);
+    //     escrow.changeArbitrator(0, vm.addr(2));
+        
+    //     Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
+    //     assertEq(escrowInfo3.arbitrator, vm.addr(2));
+    // }
+
+    function test_changeArbitrator_struct() public {
+        baseEscrow.setArbitrator(vm.addr(3), 100);
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
             amount: 100,
@@ -677,16 +710,34 @@ contract EscrowTest is Test {
             deadline: block.timestamp + 3600,
             locked: false
         });
-        escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
+        baseEscrow.createEscrow(vm.addr(1), vm.addr(2), escrowInfo1);
         
-        Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
+        Escrow.EscrowInfo memory escrowInfo2 = baseEscrow.getEscrow(0);
         assertEq(escrowInfo2.arbitrator, arbitrator);
         
-        vm.prank(msg.sender);
-        escrow.changeArbitrator(0, vm.addr(2));
+        vm.startPrank(vm.addr(2));
+        Escrow.ArbitratorRequest memory request = Escrow.ArbitratorRequest({
+            invoiceId: 0,
+            oldArbitrator: arbitrator,
+            newArbitrator: vm.addr(3),
+            salt: 11111111111
+        });
+        bytes32 hash = baseEscrow.hashArbitratorRequestStruct(request);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(2, hash);
+        bytes memory signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
+        vm.stopPrank();
+
+        vm.startPrank(vm.addr(1));
+        Escrow.ArbitratorRequestWithSignature memory requestWithSig = Escrow.ArbitratorRequestWithSignature({
+            request: request,
+            requestedBy: vm.addr(2),
+            signature: signature
+        });
+        baseEscrow.changeArbitrator(requestWithSig);
+        vm.stopPrank();
         
-        Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
-        assertEq(escrowInfo3.arbitrator, vm.addr(2));
+        Escrow.EscrowInfo memory escrowInfo3 = baseEscrow.getEscrow(0);
+        assertEq(escrowInfo3.arbitrator, vm.addr(3));
     }
 
     function test_transfer_payer() public {
