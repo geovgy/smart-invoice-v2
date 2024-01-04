@@ -321,25 +321,6 @@ contract Escrow is ERC721, Ownable, EIP712, ReentrancyGuard {
         emit Withdraw(invoiceId, msg.sender, amount);
     }
 
-    // function changeArbitrator(
-    //     uint256 invoiceId, 
-    //     address arbitrator
-    // ) external whenEscrowIsNotLocked(invoiceId) nonReentrant {
-    //     require(
-    //         payerOf(invoiceId) == msg.sender || payeeOf(invoiceId) == msg.sender, 
-    //         "Escrow: caller is not the payer or payee"
-    //     );
-    //     require(arbitrator != address(0), "Escrow: arbitrator is the zero address");
-    //     require(_arbitrators[arbitrator], "Escrow: arbitrator is not valid");
-    //     require(
-    //         payerOf(invoiceId) != arbitrator && payeeOf(invoiceId) != arbitrator, 
-    //         "Escrow: arbitrator cannot be payer or payee"
-    //     );
-
-    //     _escrows[invoiceId].arbitrator = arbitrator;
-    //     _escrowArbitrationFeeBP[invoiceId] = _arbitratorFeeBasisPts[arbitrator];
-    // }
-
     function changeArbitrator(
         ArbitratorRequestWithSignature calldata data
     ) external whenEscrowIsNotLocked(data.request.invoiceId) nonReentrant {

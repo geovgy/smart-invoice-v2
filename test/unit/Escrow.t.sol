@@ -664,36 +664,7 @@ contract EscrowTest is Test {
         assertEq(token.balanceOf(address(escrow)), 0);
     }
 
-    // function test_changeArbitrator() public {
-    //     escrow.setArbitrator(vm.addr(2), 100);
-    //     Escrow.Payment[] memory payments = new Escrow.Payment[](1);
-    //     payments[0] = Escrow.Payment({
-    //         amount: 100,
-    //         funded: false,
-    //         unlocked: false,
-    //         paid: false
-    //     });
-    //     Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
-    //         token: address(token),
-    //         details: "",
-    //         payments: payments,
-    //         arbitrator: arbitrator,
-    //         deadline: block.timestamp + 3600,
-    //         locked: false
-    //     });
-    //     escrow.createEscrow(vm.addr(1), msg.sender, escrowInfo1);
-        
-    //     Escrow.EscrowInfo memory escrowInfo2 = escrow.getEscrow(0);
-    //     assertEq(escrowInfo2.arbitrator, arbitrator);
-        
-    //     vm.prank(msg.sender);
-    //     escrow.changeArbitrator(0, vm.addr(2));
-        
-    //     Escrow.EscrowInfo memory escrowInfo3 = escrow.getEscrow(0);
-    //     assertEq(escrowInfo3.arbitrator, vm.addr(2));
-    // }
-
-    function test_changeArbitrator_struct() public {
+    function test_changeArbitrator() public {
         baseEscrow.setArbitrator(vm.addr(3), 100);
         Escrow.Payment[] memory payments = new Escrow.Payment[](1);
         payments[0] = Escrow.Payment({
@@ -733,6 +704,75 @@ contract EscrowTest is Test {
             requestedBy: vm.addr(2),
             signature: signature
         });
+        baseEscrow.changeArbitrator(requestWithSig);
+        vm.stopPrank();
+        
+        Escrow.EscrowInfo memory escrowInfo3 = baseEscrow.getEscrow(0);
+        assertEq(escrowInfo3.arbitrator, vm.addr(3));
+    }
+
+    function testRevert_changeArbitrator_usedSalt() public {
+        baseEscrow.setArbitrator(vm.addr(3), 100);
+        Escrow.Payment[] memory payments = new Escrow.Payment[](1);
+        payments[0] = Escrow.Payment({
+            amount: 100,
+            funded: false,
+            unlocked: false,
+            paid: false
+        });
+        Escrow.EscrowInfo memory escrowInfo1 = Escrow.EscrowInfo({
+            token: address(token),
+            details: "",
+            payments: payments,
+            arbitrator: arbitrator,
+            deadline: block.timestamp + 3600,
+            locked: false
+        });
+        baseEscrow.createEscrow(vm.addr(1), vm.addr(2), escrowInfo1);
+        
+        Escrow.EscrowInfo memory escrowInfo2 = baseEscrow.getEscrow(0);
+        assertEq(escrowInfo2.arbitrator, arbitrator);
+        
+        vm.startPrank(vm.addr(2));
+        Escrow.ArbitratorRequest memory request = Escrow.ArbitratorRequest({
+            invoiceId: 0,
+            oldArbitrator: arbitrator,
+            newArbitrator: vm.addr(3),
+            salt: 11111111111
+        });
+        bytes32 hash = baseEscrow.hashArbitratorRequestStruct(request);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(2, hash);
+        bytes memory signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
+        vm.stopPrank();
+
+        vm.startPrank(vm.addr(1));
+        Escrow.ArbitratorRequestWithSignature memory requestWithSig = Escrow.ArbitratorRequestWithSignature({
+            request: request,
+            requestedBy: vm.addr(2),
+            signature: signature
+        });
+        baseEscrow.changeArbitrator(requestWithSig);
+
+
+        // try to change arbitrator again with the same salt
+        request = Escrow.ArbitratorRequest({
+            invoiceId: 0,
+            oldArbitrator: vm.addr(3),
+            newArbitrator: arbitrator,
+            salt: 11111111111
+        });
+        hash = baseEscrow.hashArbitratorRequestStruct(request);
+        (v, r, s) = vm.sign(1, hash);
+        signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
+        vm.stopPrank();
+
+        vm.startPrank(vm.addr(2));
+        requestWithSig = Escrow.ArbitratorRequestWithSignature({
+            request: request,
+            requestedBy: vm.addr(1),
+            signature: signature
+        });
+        vm.expectRevert("Escrow: salt already used");
         baseEscrow.changeArbitrator(requestWithSig);
         vm.stopPrank();
         
